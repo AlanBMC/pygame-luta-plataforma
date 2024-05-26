@@ -13,14 +13,21 @@ def gravidade(clock, chao):
     
     FORCA = GRAVIDADE * TEMPO
     atirador.aceleracao_y += FORCA
-    
-    
+    soldada.aceleracao_y += FORCA
+
+
     atirador.rect.y += atirador.aceleracao_y
     atirador.rec.y += atirador.aceleracao_y
     if atirador.rect.bottom > chao:
         atirador.rect.bottom = chao
         atirador.aceleracao_y = 0
-        
+
+
+    soldada.rect.y += soldada.aceleracao_y
+    soldada.rec.y += soldada.aceleracao_y
+    if soldada.rect.bottom > chao:
+        soldada.rect.bottom = chao
+        soldada.aceleracao_y = 0
 
 def atualizador_de_acoes():
         global SOLDADA_DIREITA, SOLDADA_ESQUERDA, MOVE_DIREITA, MOVE_ESQUERDA
@@ -43,6 +50,22 @@ def atualizador_de_acoes():
             atirador.atualiza_acao('anda')
         else:
             atirador.atualiza_acao('parado')
+        if soldada.corre and not soldada.pulo and not soldada.poder_2 and not soldada.poder_1 and not soldada.poder_3 and not soldada.poder_4:
+            soldada.atualiza_acao('corre')
+        elif SOLDADA_DIREITA or SOLDADA_ESQUERDA:
+            soldada.atualiza_acao('anda')
+        elif soldada.pulo:
+            soldada.atualiza_acao('pula')
+        elif not soldada.pulo and soldada.poder_1:
+            soldada.atualiza_acao('poder_1')
+        elif not soldada.pulo and soldada.poder_2 and not soldada.poder_1:
+            soldada.atualiza_acao('poder_2')
+        elif not soldada.pulo and not soldada.poder_2 and not soldada.poder_1 and soldada.poder_3:
+            soldada.atualiza_acao('poder_3')
+        elif not soldada.pulo and not soldada.poder_2 and not soldada.poder_1 and not soldada.poder_3 and soldada.poder_4:
+            soldada.atualiza_acao('poder_4_area')
+        else:
+            soldada.atualiza_acao('parado')
 
 
 
@@ -74,10 +97,16 @@ def verifica_colisao_chao(surface, tm, camera_x, camera_y, scale=1):
                 CHAO = scaled_rect.top
                 atirador.aceleracao_y = 0
                 atirador.no_ar = False
-            
+        if soldada.rec.colliderect(scaled_rect):
+            if soldada.aceleracao_y > 0:
+                soldada.rec.bottom = scaled_rect.top
+                soldada.rect.bottom = soldada.rec.bottom
+                CHAO = scaled_rect.top
+                soldada.aceleracao_y = 0
+                soldada.no_ar = False
 
 def main():
-    global RUN, CHAO, MOVE_ESQUERDA, MOVE_DIREITA
+    global RUN, CHAO, MOVE_ESQUERDA, MOVE_DIREITA, SOLDADA_DIREITA, SOLDADA_ESQUERDA
     clock = pygame.time.Clock()
     tm = carrega_mapa('terreno1.tmx')
     mapa_largura = tm.width * tm.tilewidth
@@ -95,8 +124,25 @@ def main():
         atirador.atualizar_adrenalina()
         atirador.tiros_1.atualizar()
         atirador.tiros_2.atualizar()
+
+        soldada.atualizar_adrenalina()
+        soldada.desenha(screen)
+        soldada.ataques_corpo_a_corpo.atualizar()
+
+
         atirador.movimento(MOVE_ESQUERDA, MOVE_DIREITA)
+        soldada.movimento(SOLDADA_ESQUERDA, SOLDADA_DIREITA)
         verifica_colisao_chao(screen, tm, camera_x, camera_y)
+
+        if soldada.poder_1:
+            soldada.atacar(1)
+        elif soldada.poder_2:
+            soldada.atacar(2)
+        elif soldada.poder_3:
+            soldada.atacar(3)
+        elif soldada.poder_4:
+            soldada.atacar(4)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 RUN = False
@@ -110,16 +156,35 @@ def main():
                 if event.key == pygame.K_q:
                     if atirador.tiros_1.cooldown_tiros:
                         atirador.atira_1 = True
-
                 if event.key == pygame.K_w and (MOVE_DIREITA or MOVE_ESQUERDA):
                     atirador.atira_2 = True
-                    
                 if event.key == pygame.K_a and (MOVE_DIREITA or MOVE_ESQUERDA):
                     if atirador.adrenalina > 0 and not atirador.em_cooldown:
                         atirador.corre = True
                 if event.key == pygame.K_s and (MOVE_DIREITA or MOVE_ESQUERDA):
                     if atirador.adrenalina > 0 and not atirador.em_cooldown:
                         atirador.rola = True
+
+                if event.key == pygame.K_l:
+                    SOLDADA_DIREITA = True
+                if event.key == pygame.K_j:
+                    SOLDADA_ESQUERDA = True
+                if event.key == pygame.K_i:
+                    soldada.pular()
+                if event.key == pygame.K_u:
+                    soldada.poder_1 = True
+                    
+                if event.key == pygame.K_y:
+                    soldada.poder_2 = True
+                if event.key == pygame.K_h:
+                    soldada.poder_3 = True
+                if event.key == pygame.K_o:
+                    soldada.poder_4 = True
+                if event.key == pygame.K_p and (SOLDADA_DIREITA or SOLDADA_ESQUERDA):
+                    if soldada.adrenalina > 0 and not soldada.em_cooldown:
+                        soldada.corre = True
+
+
 
             elif event.type == pygame.KEYUP:  
                 if event.key == pygame.K_LEFT:
@@ -134,6 +199,21 @@ def main():
                     atirador.corre = False
                 elif event.key == pygame.K_s:
                     atirador.rola = False
+
+                if event.key == pygame.K_l:
+                    SOLDADA_DIREITA = False
+                elif event.key == pygame.K_j:
+                    SOLDADA_ESQUERDA = False
+                elif event.key == pygame.K_u:
+                    soldada.poder_1 = False
+                elif event.key == pygame.K_y:
+                    soldada.poder_2 = False
+                elif event.key == pygame.K_h:
+                    soldada.poder_3 = False
+                elif event.key == pygame.K_o:
+                    soldada.poder_4 = False
+                if event.key == pygame.K_p:
+                    soldada.corre = False
         pygame.display.update()
         clock.tick(60) 
         pass

@@ -190,7 +190,7 @@ class Soldada:
         self.direcao = 1 # esquerda
         self.velocidade = velocidade
         self.frame_index = 0
-        self.velocidade_y = 0
+        self.aceleracao_y = 0
         self.acao_atual = 'parado'
         self.tempo_ultima_animacao = pygame.time.get_ticks()
         self.tempo_entre_frames = 60
@@ -271,19 +271,15 @@ class Soldada:
             self.flip = True
             self.direcao = -1
             
-        
-
-        self.rect.y += self.velocidade_y
         self.rect.x += dx
-        self.rec.y +=self.velocidade_y
         self.rec.x += dx
         self.rec.centerx = self.rect.centerx - (15 if self.direcao == 1 else - 15)
-        self.rec.centery = self.rect.centery + 20
+       
         
 
     def pular(self):
         if not self.no_ar:  # Só pode pular se não estiver no ar
-            self.velocidade_y = -15  # Impulso inicial do pulo (ajuste este valor)
+            self.aceleracao_y = -7  # Impulso inicial do pulo (ajuste este valor)
             self.no_ar = True
 
     def atualiza_acao(self, nova_acao):
@@ -310,7 +306,7 @@ class Soldada:
         self.atualiza_animacao()
         
         pygame.draw.rect(screen, (255,0,0), self.rec)
-        screen.blit(pygame.transform.flip(self.img, self.flip, False), self.rect.move(0, 20))
+        screen.blit(pygame.transform.flip(self.img, self.flip, False), self.rect.move(0, 25))
         self.ataques_corpo_a_corpo.desenha(screen)
 
     def atacar(self, tipo):
