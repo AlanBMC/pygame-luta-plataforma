@@ -6,7 +6,7 @@ from mapa import *
 pygame.init()
 screen = pygame.display.set_mode((1200, 600))
 atirador = Atirador(500,500, 3)
-
+soldada = Soldada(500,500,3)
 def gravidade(clock, chao):
     global TEMPO, FORCA,GRAVIDADE, ACELERACAO_Y
     TEMPO =clock.get_time()/ 1000.0
@@ -43,6 +43,8 @@ def atualizador_de_acoes():
             atirador.atualiza_acao('anda')
         else:
             atirador.atualiza_acao('parado')
+
+
 
 def verifica_colisao_chao(surface, tm, camera_x, camera_y, scale=1):
     global CHAO
