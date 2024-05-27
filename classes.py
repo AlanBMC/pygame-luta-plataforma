@@ -295,12 +295,23 @@ class Soldada:
 
     def atualiza_animacao(self):
         agora = pygame.time.get_ticks()
+        if self.poder_1:
+            self.tempo_entre_frames = 15
+        elif self.poder_2:
+            self.tempo_entre_frames = 15
+        elif self.poder_3:
+            self.tempo_entre_frames = 15
+        elif self.poder_4:
+            self.tempo_entre_frames = 15
+        else:
+            self.tempo_entre_frames = 60
         if agora - self.tempo_ultima_animacao > self.tempo_entre_frames:
             self.tempo_ultima_animacao = agora  # Atualiza o tempo da última animação
             self.frame_index += 1
             if self.frame_index >= len(self.acoes[self.acao_atual]):
                 self.frame_index = 0
             self.img = self.acoes[self.acao_atual][self.frame_index]
+    
     
     def desenha(self, screen):
         self.atualiza_animacao()
@@ -310,6 +321,7 @@ class Soldada:
         self.ataques_corpo_a_corpo.desenha(screen)
 
     def atacar(self, tipo):
+       
         x = self.rect.centerx + (40 if self.direcao == 1 else -60)
         y = self.rect.centery - 20
         self.ataques_corpo_a_corpo.atacar(x, y, self.direcao, tipo)
@@ -381,19 +393,29 @@ class AtaqueCorpoACorpo:
         
     def definir_tamanho(self, x, y):
         if self.tipo == 1:
-            largura, altura = 30, 30
+            largura, altura = 20, 100
         elif self.tipo == 2:
-            largura, altura = 40, 40
+            largura, altura = 10, 70
         elif self.tipo == 3:
             largura, altura = 50, 50
         elif self.tipo == 4:
             largura, altura = 140, 30
         else:
             largura, altura = 30, 30  # Tamanho padrão
-
+        
         if self.tipo == 4:
-            rect = pygame.Rect(x-100, y, largura, altura)
-        else:
+            if self.direcao == -1:
+                rect = pygame.Rect(x, y+30, largura, altura)
+            elif self.direcao == 1:
+                rect = pygame.Rect(x-100, y+30, largura, altura)
+        elif self.tipo == 1:
+            if self.direcao == -1:
+                rect = pygame.Rect(x, y, largura, altura)
+            elif self.direcao == 1:
+                rect = pygame.Rect(x-10, y, largura, altura)
+        elif self.tipo == 2:
+            rect = pygame.Rect(x, y, largura, altura)
+        elif self.tipo == 3:
             rect = pygame.Rect(x, y, largura, altura)
         return rect
 

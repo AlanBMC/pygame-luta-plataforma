@@ -56,13 +56,13 @@ def atualizador_de_acoes():
             soldada.atualiza_acao('anda')
         elif soldada.pulo:
             soldada.atualiza_acao('pula')
-        elif not soldada.pulo and soldada.poder_1:
+        elif not soldada.pulo and soldada.poder_1 and not soldada.ataques_corpo_a_corpo.em_cooldown:
             soldada.atualiza_acao('poder_1')
-        elif not soldada.pulo and soldada.poder_2 and not soldada.poder_1:
+        elif not soldada.pulo and soldada.poder_2 and not soldada.poder_1 and not soldada.ataques_corpo_a_corpo.em_cooldown:
             soldada.atualiza_acao('poder_2')
-        elif not soldada.pulo and not soldada.poder_2 and not soldada.poder_1 and soldada.poder_3:
+        elif not soldada.pulo and not soldada.poder_2 and not soldada.poder_1 and soldada.poder_3 and not soldada.ataques_corpo_a_corpo.em_cooldown:
             soldada.atualiza_acao('poder_3')
-        elif not soldada.pulo and not soldada.poder_2 and not soldada.poder_1 and not soldada.poder_3 and soldada.poder_4:
+        elif not soldada.pulo and not soldada.poder_2 and not soldada.poder_1 and not soldada.poder_3 and soldada.poder_4 and not soldada.ataques_corpo_a_corpo.em_cooldown:
             soldada.atualiza_acao('poder_4_area')
         else:
             soldada.atualiza_acao('parado')
@@ -153,7 +153,7 @@ def main():
                     MOVE_DIREITA = True
                 if event.key == pygame.K_UP:
                     atirador.pulando()
-                if event.key == pygame.K_q:
+                if event.key == pygame.K_q and not MOVE_DIREITA and not MOVE_ESQUERDA:
                     if atirador.tiros_1.cooldown_tiros:
                         atirador.atira_1 = True
                 if event.key == pygame.K_w and (MOVE_DIREITA or MOVE_ESQUERDA):
@@ -171,15 +171,19 @@ def main():
                     SOLDADA_ESQUERDA = True
                 if event.key == pygame.K_i:
                     soldada.pular()
-                if event.key == pygame.K_u:
-                    soldada.poder_1 = True
-                    
-                if event.key == pygame.K_y:
-                    soldada.poder_2 = True
-                if event.key == pygame.K_h:
-                    soldada.poder_3 = True
-                if event.key == pygame.K_o:
-                    soldada.poder_4 = True
+
+                if event.key == pygame.K_u and not soldada.no_ar:
+                    if not soldada.ataques_corpo_a_corpo.em_cooldown:
+                        soldada.poder_1 = True
+                if event.key == pygame.K_y and not soldada.no_ar:
+                    if not soldada.ataques_corpo_a_corpo.em_cooldown:
+                        soldada.poder_2 = True
+                if event.key == pygame.K_h and not soldada.no_ar:
+                    if not soldada.ataques_corpo_a_corpo.em_cooldown:    
+                        soldada.poder_3 = True
+                if event.key == pygame.K_o and not soldada.no_ar:
+                    if not soldada.ataques_corpo_a_corpo.em_cooldown:
+                        soldada.poder_4 = True
                 if event.key == pygame.K_p and (SOLDADA_DIREITA or SOLDADA_ESQUERDA):
                     if soldada.adrenalina > 0 and not soldada.em_cooldown:
                         soldada.corre = True
