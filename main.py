@@ -2,11 +2,15 @@ import pygame
 from globais import *
 from classes import *
 from mapa import *
+from ia import env
 
+from stable_baselines3 import PPO
 pygame.init()
 screen = pygame.display.set_mode((1200, 600))
-atirador = Atirador(500,500, 3)
-soldada = Soldada(500,500,3)
+atirador = Atirador(500,500, 4, 10,1,0,100,100)
+soldada = Soldada(100,400, 3.5, 10,1,0,100,100)
+model = PPO.load("ppo_soldada")
+
 def gravidade(clock, chao):
     global TEMPO, FORCA,GRAVIDADE, ACELERACAO_Y
     TEMPO =clock.get_time()/ 1000.0
@@ -68,6 +72,62 @@ def atualizador_de_acoes():
             soldada.atualiza_acao('parado')
 
 
+"""def ia_soldada():
+    global SOLDADA_DIREITA, SOLDADA_ESQUERDA
+    distancia = abs(atirador.rec.centerx - soldada.rec.centerx)
+    if distancia < 50:
+        if not soldada.no_ar:
+            if not soldada.ataques_corpo_a_corpo.em_cooldown:
+                        soldada.poder_1 = True
+                        SOLDADA_DIREITA = False
+                        SOLDADA_ESQUERDA = False
+    if atirador.atira_1:
+        if atirador.direcao != soldada.direcao:
+            soldada.pular()
+    if soldada.rec.centerx > atirador.rec.centerx and distancia > 200:
+        SOLDADA_DIREITA = False
+        SOLDADA_ESQUERDA = True
+        if distancia > 500:
+            soldada.corre = True
+    elif soldada.rec.centerx < atirador.rec.centerx and distancia > 200:
+        SOLDADA_DIREITA = True
+        SOLDADA_ESQUERDA = False
+        if distancia > 500:
+            soldada.corre = True"""
+        
+
+        
+def ia_soldada():
+    global SOLDADA_DIREITA, SOLDADA_ESQUERDA
+    obs = env._get_obs()  # Obtenha a observação atual
+    action, _ = model.predict(obs)  # Prediga a ação com base na observação
+    env.step(action)  # Execute a ação no ambiente
+
+def reseta(morto):
+    personagem = None
+    if morto == 'atirador':
+        personagem = Atirador(500,500, 4, 10,1,0,100,100)
+    elif morto == 'soldada':
+        personagem = Soldada(100,400, 3.5, 10,1,0,100,100)
+    return personagem
+
+
+def verificar_colisoes():
+    for tiro in atirador.tiros_1.tiros + atirador.tiros_2.tiros:
+        if tiro.rect.colliderect(soldada.rec):
+            soldada.vida -= atirador.dano
+            print(soldada.vida)
+            if soldada.vida <= 0:
+                print(soldada.vida, 'morreu')
+                atirador.matou_inimigo = True
+                soldada.vida = 100
+    for ataque in soldada.ataques_corpo_a_corpo.ataques:
+        if ataque.rect.colliderect(atirador.rec):
+            atirador.vida -= soldada.dano
+            if atirador.vida <= 0:
+                soldada.matou_inimigo = True
+                atirador.vida = 100
+
 
 def verifica_colisao_chao(surface, tm, camera_x, camera_y, scale=1):
     global CHAO
@@ -117,7 +177,7 @@ def main():
         atirador.desenha(screen)
         camera_x = atirador.rect.centerx - screen.get_width() // 2
         camera_y = atirador.rect.centery - screen.get_height() // 2
-
+        #ia_soldada()
         desenha_mapa(screen, tm, camera_x, camera_y)
         gravidade(clock, CHAO)
         atualizador_de_acoes()
@@ -133,7 +193,10 @@ def main():
         atirador.movimento(MOVE_ESQUERDA, MOVE_DIREITA)
         soldada.movimento(SOLDADA_ESQUERDA, SOLDADA_DIREITA)
         verifica_colisao_chao(screen, tm, camera_x, camera_y)
+        verificar_colisoes()
 
+        soldada.sistama_de_recompensa()
+        atirador.sistama_de_recompensa()
         if soldada.poder_1:
             soldada.atacar(1)
         elif soldada.poder_2:
@@ -195,7 +258,7 @@ def main():
                     MOVE_ESQUERDA = False
                 elif event.key == pygame.K_RIGHT:
                     MOVE_DIREITA = False
-                elif event.key == pygame.K_q:
+                elif event.key == pygame.K_q  and not (MOVE_DIREITA or MOVE_ESQUERDA):
                     atirador.atira_1 = False
                 elif event.key == pygame.K_w:
                     atirador.atira_2 = False

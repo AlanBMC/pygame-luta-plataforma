@@ -4,7 +4,7 @@ from globais import *
 class Tiro:
     def __init__(self, x, y, direcao):
         self.rect = pygame.Rect(x, y, 10, 5)  # Define o tamanho do tiro
-        self.velocidade = 10  # Velocidade do tiro
+        self.velocidade = 20  # Velocidade do tiro
         self.direcao = direcao
 
     def atualizar(self):
@@ -54,7 +54,7 @@ class Tiros:
                     self.tempo_ultimo_tiro = agora  # Iniciar cooldown
 
 class Atirador:
-    def __init__(self, x, y, velocidade):
+    def __init__(self, x, y, velocidade, dano, nivel, xp, dinheiro, vida):
         self.rec = pygame.Rect((x,y, 20, 80))
         self.flip = True # de frente
         self.velocidade = velocidade
@@ -63,6 +63,7 @@ class Atirador:
         self.direcao = 1 # esquerda
         self.acao_atual = 'parado'
         self.no_ar = False
+        self.vida = 100
         # variaveis de animacao
         self.tempo_ultima_animacao = pygame.time.get_ticks()
         self.tempo_entre_frames = 100
@@ -79,6 +80,16 @@ class Atirador:
         self.cooldown_adrenalina = 5000
         self.velocidade_base = velocidade
         self.velocidade_ataque = 5
+
+        self.dano = dano
+        self.nivel = nivel
+        self.xp = xp
+        self.dinheiro = dinheiro
+        self.vida = vida
+        self.vivo = True
+        self.matou_inimigo = False
+        self.xp_anterior = self.xp
+
 
         self.sprites = [pygame.transform.scale(pygame.image.load(f'atirador/({i+1}).png').convert_alpha(), (120, 90)) for i in range(202)]
         self.acoes = {
@@ -97,6 +108,17 @@ class Atirador:
         self.tiros_1 = Tiros(intervalo_entre_tiros=400, cooldown_tiros=5000, numero_de_disparos=10)
         self.tiros_2 = Tiros(intervalo_entre_tiros=300, cooldown_tiros=5000, numero_de_disparos=20)
 
+    def sistama_de_recompensa(self):
+        if self.vivo and self.matou_inimigo:
+            self.xp_anterior = self.xp
+            self.xp += 10
+            self.dinheiro += 10
+            self.matou_inimigo = False
+        if self.xp > 100:
+            self.xp = 0
+            self.nivel += 1
+            self.dano += 10
+            
 
     def atualizar_adrenalina(self):
         agora = pygame.time.get_ticks()
@@ -120,9 +142,15 @@ class Atirador:
                 self.adrenalina += 1
                 self.tempo_ultima_adrenalina = agora
 
-
     def atualiza_animacao(self):
         agora = pygame.time.get_ticks()
+        if self.atira_1:
+            self.tempo_entre_frames = 40
+        elif self.atira_2:
+            self.tempo_entre_frames = 40
+        else:
+            self.tempo_entre_frames = 60
+
         if agora - self.tempo_ultima_animacao > self.tempo_entre_frames:
             self.tempo_ultima_animacao = agora  # Atualiza o tempo da última animação
             self.frame_index += 1
@@ -184,12 +212,23 @@ class Atirador:
 
 
 class Soldada:
-    def __init__(self, x, y, velocidade):
+    def __init__(self, x, y, velocidade, dano, nivel, xp, dinheiro, vida):
         self.rec = pygame.Rect((x,y, 20, 80))
         self.flip = True # de frente
         self.direcao = 1 # esquerda
         self.velocidade = velocidade
         self.frame_index = 0
+
+        #sistema de status e recompensa
+        self.dano = dano
+        self.nivel = nivel
+        self.xp = xp
+        self.dinheiro = dinheiro
+        self.vida = vida
+        self.vivo = True
+        self.matou_inimigo = False
+        self.xp_anterior = self.xp
+
         self.aceleracao_y = 0
         self.acao_atual = 'parado'
         self.tempo_ultima_animacao = pygame.time.get_ticks()
@@ -208,6 +247,7 @@ class Soldada:
         self.em_cooldown = False
         self.cooldown_adrenalina = 5000
         self.sprites = [pygame.transform.scale(pygame.image.load(f'soldada/({i+1}).png').convert_alpha(), (160, 140)) for i in range(246)]
+       
         self.acoes = {
             'parado': self.sprites[1:13],
             'anda': self.sprites[14:23],
@@ -227,7 +267,19 @@ class Soldada:
         self.ataques_corpo_a_corpo = AtaquesCorpoACorpo(intervalo_entre_ataques=500, cooldown_ataques=2000, numero_de_ataques=3)
 
         
-      
+    def sistama_de_recompensa(self):
+        if self.vivo and self.matou_inimigo:
+            self.xp_anterior = self.xp
+            self.xp += 10
+            self.dinheiro += 10
+            self.matou_inimigo = False
+        if self.xp > 100:
+            self.xp = 0
+            self.nivel += 1
+            self.dano += 10
+            
+            
+        
      
     def atualizar_adrenalina(self):
         agora = pygame.time.get_ticks()
@@ -271,6 +323,7 @@ class Soldada:
             self.flip = True
             self.direcao = -1
             
+            
         self.rect.x += dx
         self.rec.x += dx
         self.rec.centerx = self.rect.centerx - (15 if self.direcao == 1 else - 15)
@@ -296,13 +349,13 @@ class Soldada:
     def atualiza_animacao(self):
         agora = pygame.time.get_ticks()
         if self.poder_1:
-            self.tempo_entre_frames = 15
+            self.tempo_entre_frames = 50
         elif self.poder_2:
-            self.tempo_entre_frames = 15
+            self.tempo_entre_frames = 50
         elif self.poder_3:
-            self.tempo_entre_frames = 15
+            self.tempo_entre_frames = 50
         elif self.poder_4:
-            self.tempo_entre_frames = 15
+            self.tempo_entre_frames = 50
         else:
             self.tempo_entre_frames = 60
         if agora - self.tempo_ultima_animacao > self.tempo_entre_frames:
@@ -312,7 +365,9 @@ class Soldada:
                 self.frame_index = 0
             self.img = self.acoes[self.acao_atual][self.frame_index]
     
-    
+    def atualizar(self):
+        self.atualiza_animacao()
+
     def desenha(self, screen):
         self.atualiza_animacao()
         
@@ -321,9 +376,10 @@ class Soldada:
         self.ataques_corpo_a_corpo.desenha(screen)
 
     def atacar(self, tipo):
-       
+        
         x = self.rect.centerx + (40 if self.direcao == 1 else -60)
         y = self.rect.centery - 20
+
         self.ataques_corpo_a_corpo.atacar(x, y, self.direcao, tipo)
 
 
@@ -357,6 +413,7 @@ class AtaquesCorpoACorpo:
         if not self.em_cooldown:
             if agora - self.tempo_ultimo_ataque >= self.intervalo_entre_ataques:
                 if self.numero_de_ataques > 0:
+                    
                     ataque = AtaqueCorpoACorpo(x, y, direcao, tipo)
                     self.ataques.append(ataque)
                     self.tempo_ultimo_ataque = agora
@@ -373,7 +430,7 @@ class AtaqueCorpoACorpo:
         self.tempo_ativo = pygame.time.get_ticks()
         self.rect = self.definir_tamanho(x, y)
         self.piscar = False
-        self.piscar_intervalo = 100  # Intervalo de piscada em milissegundos
+        self.piscar_intervalo = 50  # Intervalo de piscada em milissegundos
         self.ultima_piscada = pygame.time.get_ticks()
         self.piscar_contador = 0
         self.piscar_limite = self.definir_piscar_limite(tipo)
@@ -381,15 +438,15 @@ class AtaqueCorpoACorpo:
 
     def definir_piscar_limite(self, tipo):
         if tipo == 1:
-            return 3
+            return 1
         elif tipo == 2:
-            return 3
+            return 1
         elif tipo == 3:
-            return 3
+            return 1
         elif tipo == 4:
-            return 3
+            return 1
         else:
-            return 3  # Limite padrão
+            return 1  # Limite padrão
         
     def definir_tamanho(self, x, y):
         if self.tipo == 1:
@@ -405,19 +462,19 @@ class AtaqueCorpoACorpo:
         
         if self.tipo == 4:
             if self.direcao == -1:
-                rect = pygame.Rect(x, y+30, largura, altura)
+                return pygame.Rect(x, y+30, largura, altura)
             elif self.direcao == 1:
-                rect = pygame.Rect(x-100, y+30, largura, altura)
+                return pygame.Rect(x-100, y+30, largura, altura)
         elif self.tipo == 1:
             if self.direcao == -1:
-                rect = pygame.Rect(x, y, largura, altura)
+                return pygame.Rect(x, y, largura, altura)
             elif self.direcao == 1:
-                rect = pygame.Rect(x-10, y, largura, altura)
+                return pygame.Rect(x-10, y, largura, altura)
         elif self.tipo == 2:
-            rect = pygame.Rect(x, y, largura, altura)
+            return pygame.Rect(x, y, largura, altura)
         elif self.tipo == 3:
-            rect = pygame.Rect(x, y, largura, altura)
-        return rect
+            return pygame.Rect(x, y, largura, altura)
+        return pygame.Rect(x, y, largura, altura)
 
     def atualizar(self):
         agora = pygame.time.get_ticks()
@@ -435,4 +492,5 @@ class AtaqueCorpoACorpo:
     def desenha(self, screen):
         if not self.piscar:
             pygame.draw.rect(screen, (0, 255, 0), self.rect)
+
 
