@@ -2,14 +2,11 @@ import pygame
 from globais import *
 from classes import *
 from mapa import *
-from ia import env
 
-from stable_baselines3 import PPO
 pygame.init()
 screen = pygame.display.set_mode((1200, 600))
-atirador = Atirador(500,500, 4, 10,1,0,100,100)
+atirador = Atirador(500,500, 4, 50,1,0,100,100,5,10, 10, 15)
 soldada = Soldada(100,400, 3.5, 10,1,0,100,100)
-model = PPO.load("ppo_soldada")
 
 def gravidade(clock, chao):
     global TEMPO, FORCA,GRAVIDADE, ACELERACAO_Y
@@ -52,6 +49,9 @@ def atualizador_de_acoes():
             atirador.atualiza_acao('rola')
         elif MOVE_DIREITA or MOVE_ESQUERDA:
             atirador.atualiza_acao('anda')
+        elif atirador.sofreu_dano:
+            atirador.atualiza_acao('sofreu_dano')
+            atirador.sofreu_dano = False
         else:
             atirador.atualiza_acao('parado')
         if soldada.corre and not soldada.pulo and not soldada.poder_2 and not soldada.poder_1 and not soldada.poder_3 and not soldada.poder_4:
@@ -68,12 +68,18 @@ def atualizador_de_acoes():
             soldada.atualiza_acao('poder_3')
         elif not soldada.pulo and not soldada.poder_2 and not soldada.poder_1 and not soldada.poder_3 and soldada.poder_4 and not soldada.ataques_corpo_a_corpo.em_cooldown:
             soldada.atualiza_acao('poder_4_area')
+        elif soldada.sofreu_dano:
+            soldada.atualiza_acao('sofreu_dano')
+            soldada.sofreu_dano = False
+        elif soldada.vida <= 0:
+            soldada.atualiza_acao('morte')
         else:
             soldada.atualiza_acao('parado')
 
 
-"""def ia_soldada():
+def ia_soldada():
     global SOLDADA_DIREITA, SOLDADA_ESQUERDA
+    
     distancia = abs(atirador.rec.centerx - soldada.rec.centerx)
     if distancia < 50:
         if not soldada.no_ar:
@@ -93,15 +99,41 @@ def atualizador_de_acoes():
         SOLDADA_DIREITA = True
         SOLDADA_ESQUERDA = False
         if distancia > 500:
-            soldada.corre = True"""
+            soldada.corre = True
         
+def desenha_status_atirador(screen):
+    fonte = pygame.font.SysFont(None, 24)
+    xp_rect = pygame.Rect(10, 10, atirador.xp * 2, 20)  # Largura baseada no XP
+    nivel_rect = pygame.Rect(10, 40, 100, 20)
+    dano_rect = pygame.Rect(10, 70, atirador.dano * 2, 20)  # Largura baseada no dano
+    vida_rect = pygame.Rect(10, 100, atirador.vida * 2, 20)  # Largura baseada na vida
 
-        
-def ia_soldada():
-    global SOLDADA_DIREITA, SOLDADA_ESQUERDA
-    obs = env._get_obs()  # Obtenha a observação atual
-    action, _ = model.predict(obs)  # Prediga a ação com base na observação
-    env.step(action)  # Execute a ação no ambiente
+    pygame.draw.rect(screen, (0, 255, 0), xp_rect)
+    pygame.draw.rect(screen, (0, 0, 255), nivel_rect)
+    pygame.draw.rect(screen, (255, 0, 0), dano_rect)
+    pygame.draw.rect(screen, (255, 255, 0), vida_rect)
+
+    screen.blit(fonte.render(f'XP: {atirador.xp}', True, (255, 255, 255)), (xp_rect.x + 5, xp_rect.y + 5))
+    screen.blit(fonte.render(f'Nível: {atirador.nivel}', True, (255, 255, 255)), (nivel_rect.x + 5, nivel_rect.y + 5))
+    screen.blit(fonte.render(f'Dano: {atirador.dano}', True, (255, 255, 255)), (dano_rect.x + 5, dano_rect.y + 5))
+    screen.blit(fonte.render(f'Vida: {atirador.vida}', True, (255, 255, 255)), (vida_rect.x + 5, vida_rect.y + 5))
+
+def desenha_status_soldada(screen):
+    fonte = pygame.font.SysFont(None, 24)
+    xp_rect = pygame.Rect(10, 110, soldada.xp * 2, 20)  # Largura baseada no XP
+    nivel_rect = pygame.Rect(10, 140, 100, 20)
+    dano_rect = pygame.Rect(10, 170, soldada.dano * 2, 20)  # Largura baseada no dano
+    vida_rect = pygame.Rect(10, 200, soldada.vida * 2, 20)  # Largura baseada na vida
+
+    pygame.draw.rect(screen, (0, 255, 0), xp_rect)
+    pygame.draw.rect(screen, (0, 0, 255), nivel_rect)
+    pygame.draw.rect(screen, (255, 0, 0), dano_rect)
+    pygame.draw.rect(screen, (255, 255, 0), vida_rect)
+
+    screen.blit(fonte.render(f'XP: {soldada.xp}', True, (255, 255, 255)), (xp_rect.x + 5, xp_rect.y + 5))
+    screen.blit(fonte.render(f'Nível: {soldada.nivel}', True, (255, 255, 255)), (nivel_rect.x + 5, nivel_rect.y + 5))
+    screen.blit(fonte.render(f'Dano: {soldada.dano}', True, (255, 255, 255)), (dano_rect.x + 5, dano_rect.y + 5))
+    screen.blit(fonte.render(f'Vida: {soldada.vida}', True, (255, 255, 255)), (vida_rect.x + 5, vida_rect.y + 5))
 
 def reseta(morto):
     personagem = None
@@ -116,17 +148,25 @@ def verificar_colisoes():
     for tiro in atirador.tiros_1.tiros + atirador.tiros_2.tiros:
         if tiro.rect.colliderect(soldada.rec):
             soldada.vida -= atirador.dano
-            print(soldada.vida)
+            soldada.sofreu_dano = True
+            
             if soldada.vida <= 0:
-                print(soldada.vida, 'morreu')
                 atirador.matou_inimigo = True
-                soldada.vida = 100
+                #soldada.vida = 100
+                soldada.vivo = False
+                atirador.xp += soldada.xp_de_morte
+                soldada.xp = 0
     for ataque in soldada.ataques_corpo_a_corpo.ataques:
         if ataque.rect.colliderect(atirador.rec):
             atirador.vida -= soldada.dano
+            atirador.sofreu_dano = True
             if atirador.vida <= 0:
                 soldada.matou_inimigo = True
-                atirador.vida = 100
+                #atirador.vida = 100
+                atirador.vivo = False
+                soldada.xp += atirador.xp_de_morte
+                atirador.xp = 0
+                
 
 
 def verifica_colisao_chao(surface, tm, camera_x, camera_y, scale=1):
@@ -174,37 +214,50 @@ def main():
 
     while RUN:
         screen.fill((0, 0, 0))
-        atirador.desenha(screen)
+       
+        desenha_status_atirador(screen)
+        
         camera_x = atirador.rect.centerx - screen.get_width() // 2
         camera_y = atirador.rect.centery - screen.get_height() // 2
-        #ia_soldada()
         desenha_mapa(screen, tm, camera_x, camera_y)
         gravidade(clock, CHAO)
         atualizador_de_acoes()
-        atirador.atualizar_adrenalina()
-        atirador.tiros_1.atualizar()
-        atirador.tiros_2.atualizar()
+        if atirador.vivo:
+            atirador.desenha(screen)
+            desenha_status_atirador(screen)
+            atirador.atualizar_adrenalina()
+            atirador.tiros_1.atualizar()
+            atirador.tiros_2.atualizar()
+            atirador.movimento(MOVE_ESQUERDA, MOVE_DIREITA)
+            atirador.progresso_de_status()
+        else:
+            atirador.desenha_morte(screen)
 
-        soldada.atualizar_adrenalina()
-        soldada.desenha(screen)
-        soldada.ataques_corpo_a_corpo.atualizar()
+        if soldada.vivo:
+            desenha_status_soldada(screen)
+            #ia_soldada()
+            soldada.movimento(SOLDADA_ESQUERDA, SOLDADA_DIREITA)
+            soldada.atualizar_adrenalina()
+            soldada.desenha(screen)
+            soldada.ataques_corpo_a_corpo.atualizar()
+            soldada.sistama_de_recompensa()
+            if soldada.poder_1:
+                soldada.atacar(1)
+            elif soldada.poder_2:
+                soldada.atacar(2)
+            elif soldada.poder_3:
+                soldada.atacar(3)
+            elif soldada.poder_4:
+                soldada.atacar(4)
+        else:
+            soldada.desenha_morte(screen)
 
 
-        atirador.movimento(MOVE_ESQUERDA, MOVE_DIREITA)
-        soldada.movimento(SOLDADA_ESQUERDA, SOLDADA_DIREITA)
+        
         verifica_colisao_chao(screen, tm, camera_x, camera_y)
         verificar_colisoes()
-
-        soldada.sistama_de_recompensa()
-        atirador.sistama_de_recompensa()
-        if soldada.poder_1:
-            soldada.atacar(1)
-        elif soldada.poder_2:
-            soldada.atacar(2)
-        elif soldada.poder_3:
-            soldada.atacar(3)
-        elif soldada.poder_4:
-            soldada.atacar(4)
+        
+  
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -281,7 +334,8 @@ def main():
                     soldada.poder_4 = False
                 if event.key == pygame.K_p:
                     soldada.corre = False
+       
         pygame.display.update()
-        clock.tick(60) 
+        clock.tick(60)
         pass
 main()

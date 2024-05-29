@@ -54,7 +54,7 @@ class Tiros:
                     self.tempo_ultimo_tiro = agora  # Iniciar cooldown
 
 class Atirador:
-    def __init__(self, x, y, velocidade, dano, nivel, xp, dinheiro, vida):
+    def __init__(self, x, y, velocidade, dano, nivel, xp, dinheiro, vida, velocidade_ataque, adrenalina, quantidade_disparos_skil1, quantidade_disparos_skil2):
         self.rec = pygame.Rect((x,y, 20, 80))
         self.flip = True # de frente
         self.velocidade = velocidade
@@ -63,11 +63,11 @@ class Atirador:
         self.direcao = 1 # esquerda
         self.acao_atual = 'parado'
         self.no_ar = False
-        self.vida = 100
         # variaveis de animacao
+        #variaveis de controle de sprites
         self.tempo_ultima_animacao = pygame.time.get_ticks()
         self.tempo_entre_frames = 100
-
+        self.sofreu_dano = False
         # variaveis de recarga
         self.corre = False
         self.rola = False
@@ -75,12 +75,15 @@ class Atirador:
         self.atira_2 = False
         self.tempo_ultima_adrenalina = pygame.time.get_ticks()
         self.intervalo_adrenalina = 500
-        self.adrenalina = 10
         self.em_cooldown = False
         self.cooldown_adrenalina = 5000
         self.velocidade_base = velocidade
-        self.velocidade_ataque = 5
 
+        # sistema de recompensa -  status do personagem.
+        self.xp_de_morte = 50 
+        self.adrenalina = adrenalina
+        self.adrenalina_base = adrenalina
+        self.velocidade_ataque = velocidade_ataque
         self.dano = dano
         self.nivel = nivel
         self.xp = xp
@@ -89,6 +92,10 @@ class Atirador:
         self.vivo = True
         self.matou_inimigo = False
         self.xp_anterior = self.xp
+        self.quantidade_disparos_skil1 = quantidade_disparos_skil1
+        self.quantidade_disparos_skil2 = quantidade_disparos_skil2
+        self.ultimo_nivel_checado = 0
+        self.xp_necessario = 200
 
 
         self.sprites = [pygame.transform.scale(pygame.image.load(f'atirador/({i+1}).png').convert_alpha(), (120, 90)) for i in range(202)]
@@ -99,30 +106,75 @@ class Atirador:
             'atira_1': self.sprites[19:55],
             'atira_2': self.sprites[71:103],
             'corre': self.sprites[104:111],
-            'rola': self.sprites[112:121]
+            'rola': self.sprites[112:121],
+            'morte': self.sprites[122:128],
+            'sofreu_dano': self.sprites[122:125]
         }
         self.img = self.acoes[self.acao_atual][0]
         self.rect = self.sprites[0].get_rect()
         self.rect.center = (x, y+20)
         self.rec.center = (x+10,y-50)
-        self.tiros_1 = Tiros(intervalo_entre_tiros=400, cooldown_tiros=5000, numero_de_disparos=10)
-        self.tiros_2 = Tiros(intervalo_entre_tiros=300, cooldown_tiros=5000, numero_de_disparos=20)
+        self.tiros_1 = Tiros(intervalo_entre_tiros=400, cooldown_tiros=5000, numero_de_disparos=quantidade_disparos_skil1)
+        self.tiros_2 = Tiros(intervalo_entre_tiros=300, cooldown_tiros=5000, numero_de_disparos=quantidade_disparos_skil2)
 
-    def sistama_de_recompensa(self):
-        if self.vivo and self.matou_inimigo:
-            self.xp_anterior = self.xp
-            self.xp += 10
-            self.dinheiro += 10
-            self.matou_inimigo = False
-        if self.xp > 100:
+
+
+
+    def progresso_de_status(self):
+        subiu_de_nivel = self.proximo_nivel()
+        if subiu_de_nivel:
+            if self.nivel < 10:
+                self.dano += 3
+                self.vida += 20
+                self.dinheiro += 50
+                self.adrenalina += 1
+            elif self.nivel % 10 == 0 and self.nivel != self.ultimo_nivel_checado:
+                self.dano += 5
+                self.vida += 30
+                self.adrenalina += 3
+                self.dinheiro += 70
+                self.adrenalina_base = self.adrenalina
+                self.velocidade_ataque += 0.5
+                self.quantidade_disparos_skil1 += 2
+                self.quantidade_disparos_skil2 += 2
+            elif self.nivel % 20 == 0 and self.nivel != self.ultimo_nivel_checado:
+                self.dano += 5
+                self.vida += 30
+                self.adrenalina += 3
+                self.dinheiro += 70
+                self.adrenalina_base = self.adrenalina
+                self.velocidade_ataque += 0.5
+                self.quantidade_disparos_skil1 += 2
+                self.quantidade_disparos_skil2 += 2
+            elif self.nivel % 30 == 0 and self.nivel != self.ultimo_nivel_checado:
+                self.dano += 5
+                self.vida += 30
+                self.adrenalina += 3
+                self.dinheiro += 70
+                self.adrenalina_base = self.adrenalina
+                self.velocidade_ataque += 0.5
+                self.quantidade_disparos_skil1 += 2
+                self.quantidade_disparos_skil2 += 2
+
+    def proximo_nivel(self):
+        if self.xp >= self.xp_necessario:
             self.xp = 0
             self.nivel += 1
-            self.dano += 10
-            
+            if self.nivel < 10:
+                self.xp_necessario += 100
+            elif self.nivel % 10 == 0 and self.nivel != self.ultimo_nivel_checado:
+                self.xp_necessario += 1000
+            elif self.nivel % 20 == 0 and self.nivel != self.ultimo_nivel_checado:
+                self.xp_necessario += 5000
+            elif self.nivel % 30 == 0 and self.nivel != self.ultimo_nivel_checado:
+                self.xp_necessario += 10000
+            self.ultimo_nivel_checado = self.nivel
+            return True
+        return False
+
 
     def atualizar_adrenalina(self):
         agora = pygame.time.get_ticks()
-        
         if self.corre or self.rola:
             if agora - self.tempo_ultima_adrenalina >= self.intervalo_adrenalina:
                 if self.adrenalina > 0:
@@ -135,7 +187,7 @@ class Atirador:
                     self.tempo_ultima_adrenalina = agora  # Iniciar cooldown
         elif self.em_cooldown:
             if agora - self.tempo_ultima_adrenalina >= self.cooldown_adrenalina:
-                self.adrenalina = 10  # Restaurar adrenalina após o cooldown
+                self.adrenalina = self.adrenalina_base  # Restaurar adrenalina após o cooldown
                 self.em_cooldown = False
         else:
             if self.adrenalina < 10 and agora - self.tempo_ultima_adrenalina >= self.intervalo_adrenalina:
@@ -148,6 +200,8 @@ class Atirador:
             self.tempo_entre_frames = 40
         elif self.atira_2:
             self.tempo_entre_frames = 40
+        elif self.sofreu_dano:
+            self.tempo_entre_frames = 100
         else:
             self.tempo_entre_frames = 60
 
@@ -209,16 +263,42 @@ class Atirador:
         screen.blit(pygame.transform.flip(self.img, self.flip, False), self.rect.move(0, 10))
         self.tiros_1.desenha(screen)
         self.tiros_2.desenha(screen)
+    
+    def desenha_morte(self, screen):
+        agora = pygame.time.get_ticks()
+        
+        if not hasattr(self, 'tempo_morte'):
+            self.tempo_morte = agora  # Marca o tempo de morte inicial
 
+        if agora - self.tempo_ultima_animacao > self.tempo_entre_frames:
+            self.tempo_ultima_animacao = agora
+            self.frame_index += 1
+            if self.frame_index >= len(self.acoes['morte']):
+                self.frame_index = len(self.acoes['morte']) - 1  # Fixa no último frame de morte
+            self.img = self.acoes['morte'][self.frame_index]
+        
+        if agora - self.tempo_morte < 5000:  # Exibe o corpo por 5 segundos
+            screen.blit(pygame.transform.flip(self.img, self.flip, False), self.rect.move(0, 20))
+        else:
+            self.img = None  # Remove o corpo após 5 segundos
 
 class Soldada:
     def __init__(self, x, y, velocidade, dano, nivel, xp, dinheiro, vida):
         self.rec = pygame.Rect((x,y, 20, 80))
-        self.flip = True # de frente
-        self.direcao = 1 # esquerda
         self.velocidade = velocidade
-        self.frame_index = 0
 
+
+        #variaveis de controle de sprites
+        self.frame_index = 0
+        self.direcao = 1 # esquerda
+        self.flip = True # de frente
+        self.acao_atual = 'parado'
+        self.tempo_ultima_animacao = pygame.time.get_ticks()
+        self.tempo_entre_frames = 60
+        self.pulo = False
+        self.no_ar = False
+        self.corre = False
+        self.sofreu_dano = False
         #sistema de status e recompensa
         self.dano = dano
         self.nivel = nivel
@@ -228,14 +308,10 @@ class Soldada:
         self.vivo = True
         self.matou_inimigo = False
         self.xp_anterior = self.xp
+        self.xp_de_morte = 50
 
         self.aceleracao_y = 0
-        self.acao_atual = 'parado'
-        self.tempo_ultima_animacao = pygame.time.get_ticks()
-        self.tempo_entre_frames = 60
-        self.pulo = False
-        self.no_ar = False
-        self.corre = False
+      
         self.velocidade_base = velocidade
         self.poder_1 = False
         self.poder_2 = False
@@ -257,7 +333,11 @@ class Soldada:
             'poder_2': self.sprites[66:74],
             'poder_3': self.sprites[83:98],
             'poder_4_area': self.sprites[175:186],
-            'morte': self.sprites[140:144]
+            'poder_5': self.sprites[161:167],
+            'poder_6': self.sprites[169:174],
+            'vitoria': self.sprites[244:246],
+            'morte': self.sprites[140:144],
+            'sofreu_dano': self.sprites[139:141]
         }
         self.img = self.acoes[self.acao_atual][0]
         self.rect = self.sprites[0].get_rect()
@@ -277,7 +357,7 @@ class Soldada:
             self.xp = 0
             self.nivel += 1
             self.dano += 10
-            
+            self.vida += 50
             
         
      
@@ -356,8 +436,13 @@ class Soldada:
             self.tempo_entre_frames = 50
         elif self.poder_4:
             self.tempo_entre_frames = 50
+        elif self.sofreu_dano:
+            self.tempo_entre_frames = 200
+        elif not self.vivo:
+            self.tempo_entre_frames = 200
         else:
             self.tempo_entre_frames = 60
+
         if agora - self.tempo_ultima_animacao > self.tempo_entre_frames:
             self.tempo_ultima_animacao = agora  # Atualiza o tempo da última animação
             self.frame_index += 1
@@ -381,6 +466,25 @@ class Soldada:
         y = self.rect.centery - 20
 
         self.ataques_corpo_a_corpo.atacar(x, y, self.direcao, tipo)
+
+    def desenha_morte(self, screen):
+        agora = pygame.time.get_ticks()
+        
+        if not hasattr(self, 'tempo_morte'):
+            self.tempo_morte = agora  # Marca o tempo de morte inicial
+
+        if agora - self.tempo_ultima_animacao > self.tempo_entre_frames:
+            self.tempo_ultima_animacao = agora
+            self.frame_index += 1
+            if self.frame_index >= len(self.acoes['morte']):
+                self.frame_index = len(self.acoes['morte']) - 1  # Fixa no último frame de morte
+            self.img = self.acoes['morte'][self.frame_index]
+        
+        if agora - self.tempo_morte < 5000:  # Exibe o corpo por 5 segundos
+            screen.blit(pygame.transform.flip(self.img, self.flip, False), self.rect.move(0, 25))
+        else:
+            self.img = None  # Remove o corpo após 5 segundos
+
 
 
 class AtaquesCorpoACorpo:
