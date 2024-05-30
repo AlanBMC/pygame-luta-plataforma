@@ -2,11 +2,21 @@ import pygame
 from globais import *
 from classes import *
 from mapa import *
-
+import random
 pygame.init()
 screen = pygame.display.set_mode((1200, 600))
 atirador = Atirador(500,500, 4, 50,1,0,100,100,5,10, 10, 15)
 soldada = Soldada(100,400, 3.5, 10,1,0,100,100)
+soldado = Soldado_dark(300,400, 3.5, 10,1,0,100,100)
+
+######## observações #####
+"""
+
+adicionar um personagem implica em: adicionar variaveis na funcao (atualizador_de_acoes), 
+gravidade, cria a ia.
+e fazer a verificacao de combate e colisao de chao
+
+"""
 
 def gravidade(clock, chao):
     global TEMPO, FORCA,GRAVIDADE, ACELERACAO_Y
@@ -15,7 +25,7 @@ def gravidade(clock, chao):
     FORCA = GRAVIDADE * TEMPO
     atirador.aceleracao_y += FORCA
     soldada.aceleracao_y += FORCA
-
+    soldado.aceleracao_y += FORCA
 
     atirador.rect.y += atirador.aceleracao_y
     atirador.rec.y += atirador.aceleracao_y
@@ -29,6 +39,12 @@ def gravidade(clock, chao):
     if soldada.rect.bottom > chao:
         soldada.rect.bottom = chao
         soldada.aceleracao_y = 0
+    
+    soldado.rect.y += soldado.aceleracao_y
+    soldado.rec.y += soldado.aceleracao_y
+    if soldado.rect.bottom > chao:
+        soldado.rect.bottom = chao
+        soldado.aceleracao_y = 0
 
 def atualizador_de_acoes():
         global SOLDADA_DIREITA, SOLDADA_ESQUERDA, MOVE_DIREITA, MOVE_ESQUERDA
@@ -76,12 +92,110 @@ def atualizador_de_acoes():
         else:
             soldada.atualiza_acao('parado')
 
+#################################### SOLDADO #################################################
+        if soldado.corre and not soldado.pulo and not soldado.poder_2 and not soldado.poder_1 and not soldado.poder_3 and not soldado.poder_4:
+            soldado.atualiza_acao('corre')
+        elif SOLDADO_DIREITA or SOLDADO_ESQUERDA:
+            soldado.atualiza_acao('anda')
+        elif soldado.pulo:
+            soldado.atualiza_acao('pula')
+        elif not soldado.pulo and soldado.poder_1 and not soldado.ataques_corpo_a_corpo.em_cooldown:
+            soldado.atualiza_acao('poder_1')
+            soldado.poder_1 = False
+        elif not soldado.pulo and soldado.poder_2 and not soldado.poder_1 and not soldado.ataques_corpo_a_corpo.em_cooldown:
+            soldado.atualiza_acao('poder_2')
+            soldado.poder_2 = False
+        elif not soldado.pulo and not soldado.poder_2 and not soldado.poder_1 and soldado.poder_3 and not soldado.ataques_corpo_a_corpo.em_cooldown:
+            soldado.atualiza_acao('poder_3')
+            soldado.poder_3 = False
+        elif not soldado.pulo and not soldado.poder_2 and not soldado.poder_1 and not soldado.poder_3 and soldado.poder_4 and not soldado.ataques_corpo_a_corpo.em_cooldown:
+            soldado.atualiza_acao('poder_4')
+            soldado.poder_4 = False
+        elif not soldado.pulo and not soldado.poder_2 and not soldado.poder_1 and not soldado.poder_3 and not soldado.poder_4 and soldado.poder_5 and not soldado.ataques_corpo_a_corpo.em_cooldown:
+            soldado.atualiza_acao('poder_5')
+            soldado.poder_5 = False
+        elif not soldado.pulo and not soldado.poder_2 and not soldado.poder_1 and not soldado.poder_3 and not soldado.poder_4 and not soldado.poder_5 and soldado.poder_6 and not soldado.ataques_corpo_a_corpo.em_cooldown:
+            soldado.atualiza_acao('poder_6')
+            soldado.poder_6 = False
+        elif not soldado.pulo and not soldado.poder_2 and not soldado.poder_1 and not soldado.poder_3 and not soldado.poder_4 and not soldado.poder_5 and not soldado.poder_6 and soldado.poder_7 and not soldado.ataques_corpo_a_corpo.em_cooldown:
+            soldado.atualiza_acao('poder_7')
+            soldado.poder_7 = False
+        elif soldado.sofreu_dano:
+            soldado.atualiza_acao('sofreu_dano')
+            soldado.sofreu_dano = False
+        elif soldado.vida <= 0:
+            soldado.atualiza_acao('morte')
+        else:
+            soldado.atualiza_acao('parado')
+
+def numero_aleatorio_(personagem):
+    tempo_atual = pygame.time.get_ticks()
+    if tempo_atual - personagem.ultimo_poder_usado >= personagem.intervalo_poder:
+        personagem.ultimo_poder_usado = tempo_atual
+        personagem.ultimo_numero_aleatorio = random.randint(1, 7)
+    return personagem.ultimo_numero_aleatorio
+
+def ia_soldado_dark():
+    global SOLDADO_ESQUERDA, SOLDADO_DIREITA
+    distancia = abs(atirador.rec.centerx - soldado.rec.centerx)
+    
+    numero_aleatorio = numero_aleatorio_(soldado)
+    
+    if distancia < 70:
+        if not soldado.no_ar:
+            if not soldado.ataques_corpo_a_corpo.em_cooldown:
+                            SOLDADO_DIREITA = False
+                            SOLDADO_ESQUERDA = False
+                            if numero_aleatorio == 1:
+                                soldado.poder_1 = True
+                                soldado.dano = soldado.poder_1_dano
+                            elif numero_aleatorio == 2:
+                                soldado.poder_2 = True
+                                soldado.dano = soldado.poder_2_dano
+                            elif numero_aleatorio == 3:
+                                soldado.poder_3 = True
+                                soldado.dano = soldado.poder_3_dano
+                            elif numero_aleatorio == 4:
+                                soldado.poder_4 = True
+                                soldado.dano = soldado.poder_4_dano
+                            elif numero_aleatorio == 5:
+                                soldado.poder_5 = True
+                                soldado.dano = soldado.poder_5_dano
+                            elif numero_aleatorio == 6:
+                                soldado.poder_6 = True
+                                soldado.dano = soldado.poder_6_dano
+                            elif numero_aleatorio == 7:
+                                soldado.poder_7 = True
+                                soldado.dano = soldado.poder_7_dano
+                            
+    if soldado.vida < 50:
+        #fazer o soldado recuar
+        pass
+    elif soldado.vida > 60 and soldado.vida < 80:
+        #fazer o soldado defender
+        pass
+
+    if atirador.atira_1:
+        if atirador.direcao != soldado.direcao:
+            soldado.pular()
+    if soldado.rec.centerx > atirador.rec.centerx and distancia > 200:
+        SOLDADO_DIREITA = False
+        SOLDADO_ESQUERDA = True
+        if distancia > 500:
+            soldado.corre = True
+    elif soldado.rec.centerx < atirador.rec.centerx and distancia > 200:
+        SOLDADO_DIREITA = True
+        SOLDADO_ESQUERDA = False
+        if distancia > 500:
+            soldado.corre = True
+    
+    
 
 def ia_soldada():
     global SOLDADA_DIREITA, SOLDADA_ESQUERDA
     
     distancia = abs(atirador.rec.centerx - soldada.rec.centerx)
-    if distancia < 50:
+    if distancia < 70:
         if not soldada.no_ar:
             if not soldada.ataques_corpo_a_corpo.em_cooldown:
                         soldada.poder_1 = True
@@ -144,29 +258,43 @@ def reseta(morto):
     return personagem
 
 
-def verificar_colisoes():
-    for tiro in atirador.tiros_1.tiros + atirador.tiros_2.tiros:
-        if tiro.rect.colliderect(soldada.rec):
-            soldada.vida -= atirador.dano
-            soldada.sofreu_dano = True
-            
-            if soldada.vida <= 0:
-                atirador.matou_inimigo = True
-                #soldada.vida = 100
-                soldada.vivo = False
-                atirador.xp += soldada.xp_de_morte
-                soldada.xp = 0
-    for ataque in soldada.ataques_corpo_a_corpo.ataques:
-        if ataque.rect.colliderect(atirador.rec):
-            atirador.vida -= soldada.dano
-            atirador.sofreu_dano = True
-            if atirador.vida <= 0:
-                soldada.matou_inimigo = True
-                #atirador.vida = 100
-                atirador.vivo = False
-                soldada.xp += atirador.xp_de_morte
-                atirador.xp = 0
+def verificar_colisoes_combate():
+    if soldada.vivo:
+        for tiro in atirador.tiros_1.tiros + atirador.tiros_2.tiros:
+            if tiro.rect.colliderect(soldada.rec):
+                soldada.vida -= atirador.dano
+                soldada.sofreu_dano = True
                 
+                if soldada.vida <= 0:
+                    atirador.matou_inimigo = True
+                    #soldada.vida = 100
+                    soldada.vivo = False
+                    atirador.xp += soldada.xp_de_morte
+                    
+                    soldada.xp = 0
+    if atirador.vivo:
+        for ataque in soldada.ataques_corpo_a_corpo.ataques:
+            if ataque.rect.colliderect(atirador.rec):
+                atirador.vida -= soldada.dano
+                atirador.sofreu_dano = True
+                if atirador.vida <= 0:
+                    soldada.matou_inimigo = True
+                    atirador.vida = 100
+                    #atirador.vivo = False
+                    soldada.xp += atirador.xp_de_morte
+                    atirador.xp = 0
+    if soldado.vivo:
+        for ataque in soldado.ataques_corpo_a_corpo.ataques:
+            if ataque.rect.colliderect(atirador.rec):
+                atirador.vida -= soldado.dano
+                
+                atirador.sofreu_dano = True
+                if atirador.vida <= 0:
+                    soldado.matou_inimigo = True
+                    atirador.vida = 100
+                    #atirador.vivo = False
+                    soldado.xp += atirador.xp_de_morte
+                    atirador.xp = 0
 
 
 def verifica_colisao_chao(surface, tm, camera_x, camera_y, scale=1):
@@ -205,23 +333,32 @@ def verifica_colisao_chao(surface, tm, camera_x, camera_y, scale=1):
                 soldada.aceleracao_y = 0
                 soldada.no_ar = False
 
+        if soldado.rec.colliderect(scaled_rect):
+            if soldado.aceleracao_y > 0:
+                soldado.rec.bottom = scaled_rect.top
+                soldado.rect.bottom = soldado.rec.bottom
+                CHAO = scaled_rect.top
+                soldado.aceleracao_y = 0
+                soldado.no_ar = False
+
 def main():
-    global RUN, CHAO, MOVE_ESQUERDA, MOVE_DIREITA, SOLDADA_DIREITA, SOLDADA_ESQUERDA
+    global RUN, CHAO, MOVE_ESQUERDA, MOVE_DIREITA, SOLDADA_DIREITA, SOLDADA_ESQUERDA, SOLDADO_ESQUERDA, SOLDADO_DIREITA
     clock = pygame.time.Clock()
     tm = carrega_mapa('terreno1.tmx')
-    mapa_largura = tm.width * tm.tilewidth
-    mapa_altura = tm.height * tm.tileheight
+    #mapa_largura = tm.width * tm.tilewidth
+    #mapa_altura = tm.height * tm.tileheight
 
     while RUN:
         screen.fill((0, 0, 0))
        
         desenha_status_atirador(screen)
-        
         camera_x = atirador.rect.centerx - screen.get_width() // 2
         camera_y = atirador.rect.centery - screen.get_height() // 2
         desenha_mapa(screen, tm, camera_x, camera_y)
         gravidade(clock, CHAO)
+        
         atualizador_de_acoes()
+
         if atirador.vivo:
             atirador.desenha(screen)
             desenha_status_atirador(screen)
@@ -252,10 +389,34 @@ def main():
         else:
             soldada.desenha_morte(screen)
 
+        if soldado.vivo:
+            
+            ia_soldado_dark()
+            soldado.movimento(SOLDADO_ESQUERDA, SOLDADO_DIREITA)
+            soldado.atualizar_adrenalina()
+            soldado.desenha(screen)
+            soldado.ataques_corpo_a_corpo.atualizar()
+            soldado.sistema_de_recompensa()
+            if soldado.poder_1:
+                soldado.atacar(1)
+            elif soldado.poder_2:
+                soldado.atacar(2)
+            elif soldado.poder_3:
+                soldado.atacar(3)
+            elif soldado.poder_4:
+                soldado.atacar(4)
+            elif soldado.poder_5:
+                soldado.atacar(5)
+            elif soldado.poder_6:
+                soldado.atacar(6)
+            elif soldado.poder_7:
+                soldado.atacar(7)
+        else:
+            soldado.desenha_morte(screen)
 
         
         verifica_colisao_chao(screen, tm, camera_x, camera_y)
-        verificar_colisoes()
+        verificar_colisoes_combate()
         
   
 
@@ -287,7 +448,8 @@ def main():
                     SOLDADA_ESQUERDA = True
                 if event.key == pygame.K_i:
                     soldada.pular()
-
+                if event.key == pygame.K_n:
+                    SOLDADO_DIREITA = True
                 if event.key == pygame.K_u and not soldada.no_ar:
                     if not soldada.ataques_corpo_a_corpo.em_cooldown:
                         soldada.poder_1 = True
