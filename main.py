@@ -217,22 +217,76 @@ def ia_soldada():
         if distancia > 500:
             soldada.corre = True
         
-def desenha_status_atirador(screen):
-    fonte = pygame.font.SysFont(None, 24)
-    xp_rect = pygame.Rect(10, 10, atirador.xp * 2, 20)  # Largura baseada no XP
-    nivel_rect = pygame.Rect(10, 40, 100, 20)
-    dano_rect = pygame.Rect(10, 70, atirador.dano * 2, 20)  # Largura baseada no dano
-    vida_rect = pygame.Rect(10, 100, atirador.vida * 2, 20)  # Largura baseada na vida
 
+
+def desenha_status_atirador(screen):
+    fonte = pygame.font.SysFont(None, 18)
+
+    xp_rect = pygame.Rect(10, 10, 0, 0)  # Largura baseada no XP
+    nivel_rect = pygame.Rect(10, 40, 0, 0)
+    dano_rect = pygame.Rect(10, 70,0, 0)  # Largura baseada no dano
+    vida_rect = pygame.Rect(10, 100, 0, 0)  # Largura baseada na vida
+
+    # Desenhar as barras de status
     pygame.draw.rect(screen, (0, 255, 0), xp_rect)
     pygame.draw.rect(screen, (0, 0, 255), nivel_rect)
     pygame.draw.rect(screen, (255, 0, 0), dano_rect)
     pygame.draw.rect(screen, (255, 255, 0), vida_rect)
 
+    # Renderizar o texto dos status
     screen.blit(fonte.render(f'XP: {atirador.xp}', True, (255, 255, 255)), (xp_rect.x + 5, xp_rect.y + 5))
-    screen.blit(fonte.render(f'Nível: {atirador.nivel}', True, (255, 255, 255)), (nivel_rect.x + 5, nivel_rect.y + 5))
-    screen.blit(fonte.render(f'Dano: {atirador.dano}', True, (255, 255, 255)), (dano_rect.x + 5, dano_rect.y + 5))
+    screen.blit(fonte.render(f'LEVEL: {atirador.nivel}', True, (255, 255, 255)), (nivel_rect.x + 5, nivel_rect.y + 5))
+    screen.blit(fonte.render(f'DANO: {atirador.dano}', True, (255, 255, 255)), (dano_rect.x + 5, dano_rect.y + 5))
     screen.blit(fonte.render(f'Vida: {atirador.vida}', True, (255, 255, 255)), (vida_rect.x + 5, vida_rect.y + 5))
+
+    # Posição dos ícones das habilidades
+    skill1_rect = atirador.sprite_skill_1.get_rect(topleft=(10, 130))
+    skill2_rect = atirador.sprite_skill_2.get_rect(topleft=(70, 130))
+
+    # Desenhar os ícones das habilidades
+    screen.blit(atirador.sprite_skill_1, skill1_rect)
+    screen.blit(atirador.sprite_skill_2, skill2_rect)
+
+    # Calcular e renderizar o tempo de recarga restante
+    agora = pygame.time.get_ticks()
+    skill1_cooldown = max(0, (atirador.tiros_1.tempo_ultimo_tiro + atirador.tiros_1.cooldown_tiros - agora) // 1000)
+    skill2_cooldown = max(0, (atirador.tiros_2.tempo_ultimo_tiro + atirador.tiros_2.cooldown_tiros - agora) // 1000)
+
+    # Criar superfícies com fundo transparente, variando a opacidade com base no cooldown
+    skill1_bg = pygame.Surface((skill1_rect.width, skill1_rect.height), pygame.SRCALPHA)
+    skill2_bg = pygame.Surface((skill2_rect.width, skill2_rect.height), pygame.SRCALPHA)
+
+    if skill1_cooldown > 0:
+        skill1_bg.fill((0, 0, 0, 150))  # Preto com transparência
+    else:
+        skill1_bg.fill((0, 255, 0, 30))  # Verde claro com transparência
+
+    if skill2_cooldown > 0:
+        skill2_bg.fill((0, 0, 0, 150))  # Preto com transparência
+    else:
+        skill2_bg.fill((0, 255, 0, 30))  # Verde claro com transparência
+
+    # Desenhar os fundos transparentes
+    screen.blit(skill1_bg, skill1_rect.topleft)
+    screen.blit(skill2_bg, skill2_rect.topleft)
+
+    # Renderizar o texto dos cooldowns, se maior que zero
+    if skill1_cooldown > 0:
+        skill1_text = fonte.render(f'{skill1_cooldown}', True, (255, 255, 255))
+        skill1_text_rect = skill1_text.get_rect(center=skill1_rect.center)
+        screen.blit(skill1_text, skill1_text_rect)
+
+    if skill2_cooldown > 0:
+        skill2_text = fonte.render(f'{skill2_cooldown}', True, (255, 255, 255))
+        skill2_text_rect = skill2_text.get_rect(center=skill2_rect.center)
+        screen.blit(skill2_text, skill2_text_rect)
+
+    # Renderizar a quantidade de tiros restantes para cada habilidade
+    tiros1_text = fonte.render(f'Tiros: {atirador.tiros_1.numero_de_disparos}', True, (255, 255, 255))
+    tiros2_text = fonte.render(f'Tiros: {atirador.tiros_2.numero_de_disparos}', True, (255, 255, 255))
+
+    screen.blit(tiros1_text, (skill1_rect.x, skill1_rect.bottom + 5))
+    screen.blit(tiros2_text, (skill2_rect.x, skill2_rect.bottom + 5))
 
 def desenha_status_soldada(screen):
     fonte = pygame.font.SysFont(None, 24)
@@ -375,8 +429,8 @@ def main():
             atirador.desenha_morte(screen)
 
         if soldada.vivo:
-            desenha_status_soldada(screen)
-            #ia_soldada()
+            #desenha_status_soldada(screen)
+            ia_soldada()
             soldada.movimento(SOLDADA_ESQUERDA, SOLDADA_DIREITA)
             soldada.atualizar_adrenalina()
             soldada.desenha(screen, camera)

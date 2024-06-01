@@ -3,21 +3,36 @@ from globais import *
 import random
 
 class Tiro:
-    def __init__(self, x, y, direcao):
+    def __init__(self, x, y, direcao, tipo):
         self.rect = pygame.Rect(x, y, 10, 5)  # Define o tamanho do tiro
         self.velocidade = 20  # Velocidade do tiro
+        self.tipo = tipo
+        if self.tipo == 1:
+            self.tiros_sprites = [pygame.transform.scale(pygame.image.load(f'tiro1/{i+1}.png').convert_alpha(), (30,30))for i in range(30)]
+        elif self.tipo == 2:
+            self.tiros_sprites = [pygame.transform.scale(pygame.image.load(f'tiro2/{i+1}.png').convert_alpha(), (30,30))for i in range(30)]
+        self.tiro_rec = self.tiros_sprites[0].get_rect(topleft=(x,y))
+        self.tipo = tipo
         self.direcao = direcao
-
+        self.flip = False if direcao == -1 else True
+        self.animacao_index = 0
+        self.frame_count = len(self.tiros_sprites)
+        
     def atualizar(self):
         self.rect.x += self.velocidade * self.direcao
+        self.tiro_rec = self.rect
+        self.animacao_index += 1
+        if self.animacao_index >= self.frame_count:
+            self.animacao_index = 0
 
     def desenha(self, screen, camera):
-        pygame.draw.rect(screen, (0, 255, 0), camera.apply_rect(self.rect))
-
+        tiro_image = self.tiros_sprites[self.animacao_index]
+        screen.blit(pygame.transform.flip(tiro_image, self.flip, False), camera.apply_rect(self.tiro_rec).move(0,-10))
 
 class Tiros:
-    def __init__(self, intervalo_entre_tiros, cooldown_tiros, numero_de_disparos):
+    def __init__(self, intervalo_entre_tiros, cooldown_tiros, numero_de_disparos, tipo):
         self.tiros = []
+        self.tipo = tipo
         self.tempo_ultimo_tiro = pygame.time.get_ticks()
         self.intervalo_entre_tiros = intervalo_entre_tiros
         self.numero_de_disparos = numero_de_disparos
@@ -44,7 +59,7 @@ class Tiros:
         if not self.em_cooldown:
             if agora - self.tempo_ultimo_tiro >= self.intervalo_entre_tiros:
                 if self.numero_de_disparos > 0:
-                    tiro = Tiro(x, y, direcao)
+                    tiro = Tiro(x, y, direcao, self.tipo)
                     self.tiros.append(tiro)
                     self.tempo_ultimo_tiro = agora
                     self.numero_de_disparos -= 1
@@ -96,12 +111,14 @@ class Atirador:
         self.ultimo_nivel_checado = 0
         self.xp_necessario = 200
 
+        self.sprite_skill_1= pygame.transform.scale(pygame.image.load(f'skillsatirador/skill_1.png').convert_alpha(), (30,30))
+        self.sprite_skill_2 = pygame.transform.scale(pygame.image.load(f'skillsatirador/skill_2.png').convert_alpha(), (30,30))
 
         self.sprites = [pygame.transform.scale(pygame.image.load(f'atirador/({i+1}).png').convert_alpha(), (120, 90)) for i in range(202)]
         self.acoes = {
             'parado': self.sprites[1:18],
             'anda': self.sprites[56:63],
-            'pula': self.sprites[64:70],
+            'pula': self.sprites[64:65],
             'atira_1': self.sprites[19:55],
             'atira_2': self.sprites[71:103],
             'corre': self.sprites[104:111],
@@ -113,14 +130,13 @@ class Atirador:
         self.rect = self.sprites[0].get_rect()
         self.rect.center = (x, y+20)
         self.rec.center = (x+10,y-50)
-        self.tiros_1 = Tiros(intervalo_entre_tiros=400, cooldown_tiros=5000, numero_de_disparos=quantidade_disparos_skil1)
-        self.tiros_2 = Tiros(intervalo_entre_tiros=300, cooldown_tiros=5000, numero_de_disparos=quantidade_disparos_skil2)
+        self.tiros_1 = Tiros(intervalo_entre_tiros=400, cooldown_tiros=5000, numero_de_disparos=quantidade_disparos_skil1, tipo =1)
+        self.tiros_2 = Tiros(intervalo_entre_tiros=300, cooldown_tiros=5000, numero_de_disparos=quantidade_disparos_skil2, tipo =2)
 
 
     def movimento(self, esquerda, direita, map_width, map_height):
         dx= 0
-        bg_scroll = 0
-        SCROLL_THRESH = 200
+       
         if self.corre:
             self.velocidade = self.velocidade_base + 0.5
         elif self.rola:
@@ -261,10 +277,7 @@ class Atirador:
        
     def desenha(self, screen, camera):
         self.atualiza_animacao()
-        #pygame.draw.rect(screen, (255,0,0), self.rec)
-        #pygame.draw.rect(screen, (255, 0, 0), camera.apply_rect(self.rec))
-        #screen.blit(pygame.transform.flip(self.img, self.flip, False), self.rect.move(0, 10))
-        #screen.blit(pygame.transform.flip(self.img, self.flip, False), camera.apply(self.rect).move(0, 10))
+
         pygame.draw.rect(screen, (255, 0, 0), camera.apply_rect(self.rec))
         screen.blit(pygame.transform.flip(self.img, self.flip, False), camera.apply_rect(self.rect).move(0,10))
 
@@ -285,7 +298,7 @@ class Atirador:
             self.img = self.acoes['morte'][self.frame_index]
         
         if agora - self.tempo_morte < 5000:  # Exibe o corpo por 5 segundos
-            screen.blit(pygame.transform.flip(self.img, self.flip, False), self.rect.move(0, 20))
+            screen.blit(pygame.transform.flip(self.img, self.flip, False), self.rect.move(0, -30))
         else:
             self.img = None  # Remove o corpo após 5 segundos
 
@@ -467,7 +480,7 @@ class Soldada:
         #pygame.draw.rect(screen, (255,0,0), self.rec)
         #screen.blit(pygame.transform.flip(self.img, self.flip, False), self.rect.move(0, 25))
         pygame.draw.rect(screen, (255, 0, 0), camera.apply_rect(self.rec))
-        screen.blit(pygame.transform.flip(self.img, self.flip, False), camera.apply_rect(self.rect).move(0, 25))
+        screen.blit(pygame.transform.flip(self.img, self.flip, False), camera.apply_rect(self.rect).move(0, 30))
         self.ataques_corpo_a_corpo.desenha(screen, camera)
 
     def atacar(self, tipo):
@@ -789,7 +802,7 @@ class Soldado_dark:
         #pygame.draw.rect(screen, (255,0,0), self.rec)
         #screen.blit(pygame.transform.flip(self.img, self.flip, False), self.rect.move(0, 25))
         pygame.draw.rect(screen, (255, 0, 0), camera.apply_rect(self.rec))
-        screen.blit(pygame.transform.flip(self.img, self.flip, False), camera.apply_rect(self.rect).move(0, 25))
+        screen.blit(pygame.transform.flip(self.img, self.flip, False), camera.apply_rect(self.rect).move(0, 30))
         self.ataques_corpo_a_corpo.desenha(screen, camera)
 
     def atacar(self, tipo):
