@@ -11,8 +11,8 @@ class Tiro:
     def atualizar(self):
         self.rect.x += self.velocidade * self.direcao
 
-    def desenha(self, screen):
-        pygame.draw.rect(screen, (0, 255, 0), self.rect)
+    def desenha(self, screen, camera):
+        pygame.draw.rect(screen, (0, 255, 0), camera.apply_rect(self.rect))
 
 
 class Tiros:
@@ -24,22 +24,20 @@ class Tiros:
         self.em_cooldown = False
         self.cooldown_tiros = cooldown_tiros
 
-    def atualizar(self):
+    def atualizar(self, camera):
         agora = pygame.time.get_ticks()
-
         if self.em_cooldown:
             if agora - self.tempo_ultimo_tiro >= self.cooldown_tiros:
                 self.numero_de_disparos = 10  # Restaurar disparos após o cooldown
                 self.em_cooldown = False
-
         for tiro in self.tiros:
             tiro.atualizar()
-            if tiro.rect.x > 1200 or tiro.rect.x < 0:
+            if tiro.rect.right < -camera.camera.x or tiro.rect.left > -camera.camera.x + 1200:
                 self.tiros.remove(tiro)
 
-    def desenha(self, screen):
+    def desenha(self, screen, camera):
         for tiro in self.tiros:
-            tiro.desenha(screen)
+            tiro.desenha(screen, camera)
 
     def atirar(self, x, y, direcao):
         agora = pygame.time.get_ticks()
@@ -119,8 +117,31 @@ class Atirador:
         self.tiros_2 = Tiros(intervalo_entre_tiros=300, cooldown_tiros=5000, numero_de_disparos=quantidade_disparos_skil2)
 
 
+    def movimento(self, esquerda, direita, map_width, map_height):
+        dx= 0
+        bg_scroll = 0
+        SCROLL_THRESH = 200
+        if self.corre:
+            self.velocidade = self.velocidade_base + 0.5
+        elif self.rola:
+            self.velocidade = self.velocidade_base + 1.5
+        else:
+            self.velocidade = self.velocidade_base
 
+        if esquerda:
+            dx = -self.velocidade
+            self.flip = True
+            self.direcao = -1
+        if direita:
+            dx = +self.velocidade
+            self.flip = False
+            self.direcao = 1
 
+   
+        self.rec.x += dx
+        self.rect.x += dx
+        self.rec.centerx = self.rect.centerx - (10 if self.direcao == 1 else - 10)
+       
     def progresso_de_status(self):
         subiu_de_nivel = self.proximo_nivel()
         if subiu_de_nivel:
@@ -236,34 +257,19 @@ class Atirador:
             self.aceleracao_y = -7  # Impulso inicial do pulo (ajuste este valor)
             self.no_ar = True
 
-    def movimento(self, esquerda, direita):
-        dx= 0 
-        if self.corre:
-            self.velocidade = self.velocidade_base + 0.5
-        elif self.rola:
-            self.velocidade = self.velocidade_base + 1.5
-        else:
-            self.velocidade = self.velocidade_base
 
-        if esquerda:
-            dx = -self.velocidade
-            self.flip = True
-            self.direcao = -1
-        if direita:
-            dx = +self.velocidade
-            self.flip = False
-            self.direcao = 1
-            
-        self.rec.x += dx
-        self.rect.x += dx
-        self.rec.centerx = self.rect.centerx - (10 if self.direcao == 1 else - 10)
        
-    def desenha(self, screen):
+    def desenha(self, screen, camera):
         self.atualiza_animacao()
-        pygame.draw.rect(screen, (255,0,0), self.rec)
-        screen.blit(pygame.transform.flip(self.img, self.flip, False), self.rect.move(0, 10))
-        self.tiros_1.desenha(screen)
-        self.tiros_2.desenha(screen)
+        #pygame.draw.rect(screen, (255,0,0), self.rec)
+        #pygame.draw.rect(screen, (255, 0, 0), camera.apply_rect(self.rec))
+        #screen.blit(pygame.transform.flip(self.img, self.flip, False), self.rect.move(0, 10))
+        #screen.blit(pygame.transform.flip(self.img, self.flip, False), camera.apply(self.rect).move(0, 10))
+        pygame.draw.rect(screen, (255, 0, 0), camera.apply_rect(self.rec))
+        screen.blit(pygame.transform.flip(self.img, self.flip, False), camera.apply_rect(self.rect).move(0,10))
+
+        self.tiros_1.desenha(screen, camera)
+        self.tiros_2.desenha(screen, camera)
     
     def desenha_morte(self, screen):
         agora = pygame.time.get_ticks()
@@ -456,12 +462,13 @@ class Soldada:
     def atualizar(self):
         self.atualiza_animacao()
 
-    def desenha(self, screen):
+    def desenha(self, screen, camera):
         self.atualiza_animacao()
-        
-        pygame.draw.rect(screen, (255,0,0), self.rec)
-        screen.blit(pygame.transform.flip(self.img, self.flip, False), self.rect.move(0, 25))
-        self.ataques_corpo_a_corpo.desenha(screen)
+        #pygame.draw.rect(screen, (255,0,0), self.rec)
+        #screen.blit(pygame.transform.flip(self.img, self.flip, False), self.rect.move(0, 25))
+        pygame.draw.rect(screen, (255, 0, 0), camera.apply_rect(self.rec))
+        screen.blit(pygame.transform.flip(self.img, self.flip, False), camera.apply_rect(self.rect).move(0, 25))
+        self.ataques_corpo_a_corpo.desenha(screen, camera)
 
     def atacar(self, tipo):
         
@@ -509,9 +516,9 @@ class AtaquesCorpoACorpo:
             if not ataque.atualizar():
                 self.ataques.remove(ataque)
 
-    def desenha(self, screen):
+    def desenha(self, screen, camera):
         for ataque in self.ataques:
-            ataque.desenha(screen)
+            ataque.desenha(screen, camera)
 
     def atacar(self, x, y, direcao, tipo):
         agora = pygame.time.get_ticks()
@@ -594,9 +601,9 @@ class AtaqueCorpoACorpo:
                 return False
         return True
 
-    def desenha(self, screen):
+    def desenha(self, screen, camera):
         if not self.piscar:
-            pygame.draw.rect(screen, (0, 255, 0), self.rect)
+            pygame.draw.rect(screen, (0, 255, 0), camera.apply_rect(self.rect))
 
 
 class Soldado_dark:
@@ -741,8 +748,6 @@ class Soldado_dark:
         self.rec.x += dx
         self.rec.centerx = self.rect.centerx - (15 if self.direcao == 1 else - 15)
        
-        
-
     def pular(self):
         if not self.no_ar:  # Só pode pular se não estiver no ar
             self.aceleracao_y = -7  # Impulso inicial do pulo (ajuste este valor)
@@ -775,17 +780,17 @@ class Soldado_dark:
                 self.frame_index = 0
             self.img = self.acoes[self.acao_atual][self.frame_index]
 
-
-
     def atualizar(self):
         self.atualiza_animacao()
 
-    def desenha(self, screen):
+    def desenha(self, screen, camera):
         self.atualiza_animacao()
         
-        pygame.draw.rect(screen, (255,0,0), self.rec)
-        screen.blit(pygame.transform.flip(self.img, self.flip, False), self.rect.move(0, 25))
-        self.ataques_corpo_a_corpo.desenha(screen)
+        #pygame.draw.rect(screen, (255,0,0), self.rec)
+        #screen.blit(pygame.transform.flip(self.img, self.flip, False), self.rect.move(0, 25))
+        pygame.draw.rect(screen, (255, 0, 0), camera.apply_rect(self.rec))
+        screen.blit(pygame.transform.flip(self.img, self.flip, False), camera.apply_rect(self.rect).move(0, 25))
+        self.ataques_corpo_a_corpo.desenha(screen, camera)
 
     def atacar(self, tipo):
         
@@ -833,9 +838,9 @@ class AtaquesCorpoACorpo_2:
             if not ataque.atualizar():
                 self.ataques.remove(ataque)
 
-    def desenha(self, screen):
+    def desenha(self, screen, camera):
         for ataque in self.ataques:
-            ataque.desenha(screen)
+            ataque.desenha(screen, camera)
 
     def atacar(self, x, y, direcao, tipo):
         agora = pygame.time.get_ticks()
@@ -925,9 +930,9 @@ class AtaqueCorpoACorpo_2:
                 return False
         return True
 
-    def desenha(self, screen):
+    def desenha(self, screen, camera):
         if not self.piscar:
-            pygame.draw.rect(screen, (0, 255, 0), self.rect)
+            pygame.draw.rect(screen, (0, 255, 0), camera.apply_rect(self.rect))
 
 
 
@@ -1103,3 +1108,79 @@ class AtaqueCorpoACorpo_3:
     def desenha(self, screen):
         if not self.piscar:
             pygame.draw.rect(screen, (0, 255, 0), self.rect)
+
+
+class BackgroundLayer:
+    def __init__(self, image_path, speed, screen_height):
+        self.original_image = pygame.image.load(image_path).convert_alpha()
+        self.image = self.scale_image(self.original_image, screen_height)
+        self.speed = speed
+        self.width = self.image.get_width()
+        self.height = self.image.get_height()
+        self.x = 0
+        self.y = 0
+
+    def scale_image(self, image, screen_height):
+        # Redimensionar a imagem mantendo a proporção da largura/altura
+        aspect_ratio = image.get_width() / image.get_height()
+        new_height = screen_height
+        new_width = int(aspect_ratio * new_height)
+        return pygame.transform.scale(image, (new_width, new_height))
+
+    def update(self, player_x):
+        self.x = -(player_x * self.speed) % self.width
+
+    def draw(self, screen):
+        screen.blit(self.image, (self.x, self.y))
+        # Se a imagem não cobre toda a tela, desenhe uma segunda imagem
+        if self.x > 0:
+            screen.blit(self.image, (self.x - self.width, self.y))
+        elif self.x < screen.get_width() - self.width:
+            screen.blit(self.image, (self.x + self.width, self.y))
+
+class ParallaxBackground:
+    def __init__(self, screen_height):
+        self.layers = []
+        self.screen_height = screen_height
+
+    def add_layer(self, image_path, speed):
+        layer = BackgroundLayer(image_path, speed, self.screen_height)
+        self.layers.append(layer)
+
+    def update(self, player_x):
+        for layer in self.layers:
+            layer.update(player_x)
+
+    def draw(self, screen):
+        for layer in self.layers:
+            layer.draw(screen)
+
+
+class Camera:
+    def __init__(self, width, height):
+        self.camera = pygame.Rect(0, 0, width, height)
+        self.width = width
+        self.height = height
+
+    def apply(self, entity):
+        return entity.rect.move(self.camera.topleft)
+    
+    def apply_rect(self, rect):
+        return rect.move(self.camera.topleft)
+
+    def update(self, target):
+        global WIDTH, HEIGHT
+        x = -target.rect.centerx + int(WIDTH / 2)
+        y = -target.rect.centery + int(HEIGHT / 2)
+
+        # Limitar a câmera dentro dos limites do mapa
+        x = min(0, x)  # Não passar do lado esquerdo
+        y = min(0, y)  # Não passar do topo
+        x = max(-(self.width - WIDTH), x)  # Não passar do lado direito
+        y = max(-(self.height - HEIGHT), y)  # Não passar do fundo
+
+        self.camera = pygame.Rect(x, y, self.width, self.height)
+
+    def draw(self, surface, group):
+        for sprite in group:
+            surface.blit(sprite.image, self.apply(sprite))

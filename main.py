@@ -3,20 +3,24 @@ from globais import *
 from classes import *
 from mapa import *
 import random
+
 pygame.init()
+
+
 screen = pygame.display.set_mode((1200, 600))
-atirador = Atirador(500,500, 4, 50,1,0,100,100,5,10, 10, 15)
+atirador = Atirador(500,500, 4, 5,1,0,100,100,5,10, 10, 15)
 soldada = Soldada(100,400, 3.5, 10,1,0,100,100)
 soldado = Soldado_dark(300,400, 3.5, 10,1,0,100,100)
+parallax_bg = ParallaxBackground(700)
+parallax_bg.add_layer('background/1.png', 0.1)
+parallax_bg.add_layer('background/2.png', 0.0)
+parallax_bg.add_layer('background/3.png', 0.4)
+parallax_bg.add_layer('background/4.png', 0.4)
+parallax_bg.add_layer('background/5.png', 0.5)
+parallax_bg.add_layer('background/6.png', 0.6)
+parallax_bg.add_layer('background/7.png', 0.3)
+parallax_bg.add_layer('background/8.png', 0.2)
 
-######## observações #####
-"""
-
-adicionar um personagem implica em: adicionar variaveis na funcao (atualizador_de_acoes), 
-gravidade, cria a ia.
-e fazer a verificacao de combate e colisao de chao
-
-"""
 
 def gravidade(clock, chao):
     global TEMPO, FORCA,GRAVIDADE, ACELERACAO_Y
@@ -189,8 +193,6 @@ def ia_soldado_dark():
         if distancia > 500:
             soldado.corre = True
     
-    
-
 def ia_soldada():
     global SOLDADA_DIREITA, SOLDADA_ESQUERDA
     
@@ -267,11 +269,11 @@ def verificar_colisoes_combate():
                 
                 if soldada.vida <= 0:
                     atirador.matou_inimigo = True
-                    #soldada.vida = 100
                     soldada.vivo = False
                     atirador.xp += soldada.xp_de_morte
                     
                     soldada.xp = 0
+    
     if atirador.vivo:
         for ataque in soldada.ataques_corpo_a_corpo.ataques:
             if ataque.rect.colliderect(atirador.rec):
@@ -279,8 +281,8 @@ def verificar_colisoes_combate():
                 atirador.sofreu_dano = True
                 if atirador.vida <= 0:
                     soldada.matou_inimigo = True
-                    atirador.vida = 100
-                    #atirador.vivo = False
+                    
+                    atirador.vivo = False
                     soldada.xp += atirador.xp_de_morte
                     atirador.xp = 0
     if soldado.vivo:
@@ -291,40 +293,39 @@ def verificar_colisoes_combate():
                 atirador.sofreu_dano = True
                 if atirador.vida <= 0:
                     soldado.matou_inimigo = True
-                    atirador.vida = 100
-                    #atirador.vivo = False
+                    atirador.vivo = False
                     soldado.xp += atirador.xp_de_morte
                     atirador.xp = 0
 
 
-def verifica_colisao_chao(surface, tm, camera_x, camera_y, scale=1):
+
+
+def verifica_colisao_chao(surface, tm, camera, scale=1):
     global CHAO
     tw = int(tm.tilewidth * scale)
     th = int(tm.tileheight * scale)
     map_width = tm.width * tw
     map_height = tm.height * th
 
-    # Limitar a câmera dentro dos limites do mapa
-    camera_x = max(0, min(camera_x, map_width - surface.get_width()))
-    camera_y = max(0, min(camera_y, map_height - surface.get_height()))
-
-    start_x = int(camera_x / tw)
-    end_x = start_x + int(surface.get_width() / tw) + 1  # +1 para cobrir casos de borda
-    start_y = int(camera_y / th)
-    end_y = start_y + int(surface.get_height() / th) + 1  # +1 para cobrir casos de borda
-
     for rect in tm.colisor_pisos_chao:
+        # Calcula a posição escalada do retângulo de colisão
         scaled_rect = pygame.Rect(
-            (rect.x * scale) - camera_x, (rect.y * scale) - camera_y, rect.width * scale, rect.height * scale)
-        pygame.draw.rect(surface, (255, 0, 0), scaled_rect, 2)
+            rect.x * scale, rect.y * scale, rect.width * scale, rect.height * scale)
+
+        # Desenha o retângulo na tela para depuração
+        screen_rect = camera.apply_rect(scaled_rect)
+        pygame.draw.rect(surface, (255, 0, 0), screen_rect, 2)
+
+        # Verifica colisão com o atirador
         if atirador.rec.colliderect(scaled_rect):
-            # Ajuste o personagem para que fique em cima do chão
-            if atirador.aceleracao_y > 0:  # Verifica se o personagem está caindo
+            if atirador.aceleracao_y > 0:
                 atirador.rec.bottom = scaled_rect.top
                 atirador.rect.bottom = atirador.rec.bottom
                 CHAO = scaled_rect.top
                 atirador.aceleracao_y = 0
                 atirador.no_ar = False
+
+        # Verifica colisão com a soldada
         if soldada.rec.colliderect(scaled_rect):
             if soldada.aceleracao_y > 0:
                 soldada.rec.bottom = scaled_rect.top
@@ -333,6 +334,7 @@ def verifica_colisao_chao(surface, tm, camera_x, camera_y, scale=1):
                 soldada.aceleracao_y = 0
                 soldada.no_ar = False
 
+        # Verifica colisão com o soldado
         if soldado.rec.colliderect(scaled_rect):
             if soldado.aceleracao_y > 0:
                 soldado.rec.bottom = scaled_rect.top
@@ -341,31 +343,33 @@ def verifica_colisao_chao(surface, tm, camera_x, camera_y, scale=1):
                 soldado.aceleracao_y = 0
                 soldado.no_ar = False
 
+
+
+
+
 def main():
     global RUN, CHAO, MOVE_ESQUERDA, MOVE_DIREITA, SOLDADA_DIREITA, SOLDADA_ESQUERDA, SOLDADO_ESQUERDA, SOLDADO_DIREITA
     clock = pygame.time.Clock()
     tm = carrega_mapa('terreno1.tmx')
-    #mapa_largura = tm.width * tm.tilewidth
-    #mapa_altura = tm.height * tm.tileheight
-
+    map_width = tm.width * tm.tilewidth
+    map_height = tm.height * tm.tileheight
+    camera = Camera(map_width, map_height)
     while RUN:
-        screen.fill((0, 0, 0))
-       
-        desenha_status_atirador(screen)
-        camera_x = atirador.rect.centerx - screen.get_width() // 2
-        camera_y = atirador.rect.centery - screen.get_height() // 2
-        desenha_mapa(screen, tm, camera_x, camera_y)
+        parallax_bg.update(atirador.rec.x)
+        screen.fill((0, 0, 0))        
+        parallax_bg.draw(screen)
+        desenha_mapa(screen, tm, -camera.camera.x, -camera.camera.y)
+        verifica_colisao_chao(screen, tm, camera)
         gravidade(clock, CHAO)
-        
         atualizador_de_acoes()
-
+        camera.update(atirador)
         if atirador.vivo:
-            atirador.desenha(screen)
+            atirador.desenha(screen, camera)
             desenha_status_atirador(screen)
             atirador.atualizar_adrenalina()
-            atirador.tiros_1.atualizar()
-            atirador.tiros_2.atualizar()
-            atirador.movimento(MOVE_ESQUERDA, MOVE_DIREITA)
+            atirador.tiros_1.atualizar(camera)
+            atirador.tiros_2.atualizar(camera)
+            atirador.movimento(MOVE_ESQUERDA, MOVE_DIREITA, map_width, map_height)
             atirador.progresso_de_status()
         else:
             atirador.desenha_morte(screen)
@@ -375,7 +379,7 @@ def main():
             #ia_soldada()
             soldada.movimento(SOLDADA_ESQUERDA, SOLDADA_DIREITA)
             soldada.atualizar_adrenalina()
-            soldada.desenha(screen)
+            soldada.desenha(screen, camera)
             soldada.ataques_corpo_a_corpo.atualizar()
             soldada.sistama_de_recompensa()
             if soldada.poder_1:
@@ -390,11 +394,10 @@ def main():
             soldada.desenha_morte(screen)
 
         if soldado.vivo:
-            
-            ia_soldado_dark()
+            #ia_soldado_dark()
             soldado.movimento(SOLDADO_ESQUERDA, SOLDADO_DIREITA)
             soldado.atualizar_adrenalina()
-            soldado.desenha(screen)
+            soldado.desenha(screen, camera)
             soldado.ataques_corpo_a_corpo.atualizar()
             soldado.sistema_de_recompensa()
             if soldado.poder_1:
@@ -415,7 +418,7 @@ def main():
             soldado.desenha_morte(screen)
 
         
-        verifica_colisao_chao(screen, tm, camera_x, camera_y)
+        
         verificar_colisoes_combate()
         
   
